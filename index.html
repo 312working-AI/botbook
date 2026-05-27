@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bot Book — by Bot Please</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  :root {
+    --bg: #07071a;
+    --bg-deep: #03030f;
+    --ink: #f4f1e8;
+    --ink-dim: rgba(244, 241, 232, 0.62);
+    --ink-faint: rgba(244, 241, 232, 0.32);
+    --gold: #e8c87a;
+    --gold-deep: #b8932c;
+    --gold-light: #fff3c4;
+    --blue: #5fc8ff;
+    --blue-deep: #2a7fc7;
+    --paper: #f4ecd6;
+    --paper-deep: #e3d8b8;
+    --paper-ink: #1a1a2e;
+    --line: rgba(232, 200, 122, 0.18);
+    --serif: "Cormorant Garamond", "Times New Roman", serif;
+    --sans: "Manrope", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+
+    --page-w: 260px;
+    --page-h: 360px;
+    --book-w: 520px;
+    --book-h: 360px;
+    --flip-ms: 1000ms;
+    --flip-ease: cubic-bezier(0.55, 0.05, 0.35, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    position: fixed;
+    width: 100%;
+    overscroll-behavior: none;
+  }
+
+  body {
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(95, 200, 255, 0.06), transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(232, 200, 122, 0.05), transparent 55%),
+      linear-gradient(180deg, #07071a 0%, #03030f 100%);
+  }
+
+  /* ───────────── Backgrounds ───────────── */
+  #stars, #orbs { position: fixed; inset: 0; pointer-events: none; }
+  #stars { z-index: 1; }
+  #orbs { z-index: 2; }
+
+  /* Per-state scene layer (custom CSS art) */
+  .scenes {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .scene {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.9s ease;
+    pointer-events: none;
+  }
+  .scene.active { opacity: 1; }
+
+  /* Floating elements layer */
+  .floats {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .float {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.9s ease, transform 0.9s ease;
+  }
+  .float.active { opacity: 1; }
+
+  /* ───────────── Top bar ───────────── */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 50;
+    padding: 22px 36px;
+    display: flex; align-items: center; justify-content: space-between;
+    pointer-events: none;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .brand .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 12px var(--gold);
+    animation: pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.4; transform: scale(0.8); } }
+
+  .state-readout {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .state-readout .num { color: var(--gold); }
+  .state-readout .bar { width: 30px; height: 1px; background: var(--line); }
+
+  /* ───────────── Progress rail ───────────── */
+  .rail {
+    position: fixed;
+    top: 50%; right: 32px;
+    transform: translateY(-50%);
+    z-index: 40;
+    display: flex; flex-direction: column;
+    gap: 16px;
+    align-items: flex-end;
+  }
+  .rail::before {
+    content: '';
+    position: absolute;
+    top: 6px; bottom: 6px; right: 4.5px;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, var(--line), transparent);
+  }
+  .rail .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    cursor: pointer;
+    transition: all 0.4s;
+    position: relative;
+    z-index: 1;
+  }
+  .rail .dot::after {
+    content: attr(data-label);
+    position: absolute;
+    right: 22px; top: 50%;
+    transform: translateY(-50%) translateX(8px);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+  }
+  .rail .dot:hover::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+  .rail .dot.active {
+    background: var(--gold);
+    border-color: var(--gold);
+    box-shadow: 0 0 12px var(--gold), 0 0 24px rgba(232,200,122,0.4);
+    transform: scale(1.15);
+  }
+  .rail .dot.passed { background: var(--gold-deep); border-color: var(--gold-deep); }
+  @media (max-width: 720px) { .rail { right: 16px; gap: 12px; } .rail .dot::after { display: none; } }
+
+  /* ───────────── Hint ───────────── */
+  .hint {
+    position: fixed;
+    bottom: 36px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    opacity: 1;
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .hint .line {
+    width: 1px; height: 36px;
+    background: linear-gradient(180deg, var(--gold), transparent);
+    animation: line-pulse 2s ease-in-out infinite;
+  }
+  @keyframes line-pulse {
+    0% { transform: scaleY(0); transform-origin: top; }
+    50% { transform: scaleY(1); transform-origin: top; }
+    51% { transform-origin: bottom; }
+    100% { transform: scaleY(0); transform-origin: bottom; }
+  }
+  .hint.dim { opacity: 0.35; }
+  .hint.hidden { opacity: 0; transform: translateX(-50%) translateY(20px); }
+
+  /* ───────────── Side captions (state metadata) ───────────── */
+  .sidemeta {
+    position: fixed;
+    left: 36px; bottom: 36px;
+    z-index: 30;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    max-width: 200px;
+    line-height: 1.8;
+  }
+  .sidemeta .label { color: var(--ink); display: block; margin-bottom: 4px; }
+  .sidemeta .author {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--gold);
+    font-size: 16px;
+    letter-spacing: 0;
+    text-transform: none;
+    margin-top: 4px;
+    display: block;
+  }
+  @media (max-width: 720px) { .sidemeta { display: none; } }
+
+  /* ───────────── World captions (above/below book) ───────────── */
+  .world {
+    position: fixed; inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .world-inner {
+    position: relative;
+    width: min(1100px, 90vw);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .world-above, .world-below {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 100%;
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .world-above {
+    top: calc(50% - var(--book-h)/2 - 120px);
+  }
+  .world-below {
+    top: calc(50% + var(--book-h)/2 + 60px);
+  }
+  .world-above .eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.36em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 14px;
+  }
+  .world-above .head {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-style: italic;
+    font-size: clamp(32px, 4.6vw, 64px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .world-above .head em {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light), var(--gold-deep));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-style: italic;
+  }
+  .world-below {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .world-below .crumbs {
+    display: inline-flex; gap: 16px;
+    padding: 12px 24px;
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    background: rgba(7,7,26,0.6);
+    backdrop-filter: blur(8px);
+  }
+  .world-below .crumbs .sep { color: var(--ink-faint); }
+  .world-below .crumbs .now { color: var(--gold); }
+
+  .world-layer { opacity: 0; transform: translateX(-50%) translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .world-layer.active { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .world-layer.preact { opacity: 0; transform: translateX(-50%) translateY(20px); }
+
+  @media (max-width: 720px) {
+    .world-above { top: 80px; }
+    .world-below { bottom: 110px; top: auto; }
+  }
+
+  /* ───────────── BOOK ───────────── */
+  .book-anchor {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    perspective: 2400px;
+    perspective-origin: 50% 50%;
+  }
+  .book {
+    position: relative;
+    width: var(--book-w);
+    height: var(--book-h);
+    transform-style: preserve-3d;
+    transform: translateX(calc(var(--page-w) / -2)) rotateX(6deg) rotateY(-6deg);
+    transition: transform 1.1s var(--flip-ease);
+    will-change: transform;
+  }
+  .book.open {
+    transform: translateX(0) rotateX(4deg) rotateY(-3deg);
+  }
+  .book.closing {
+    transform: translateX(calc(var(--page-w) / -2)) rotateX(6deg) rotateY(-6deg);
+  }
+  @media (max-width: 720px) {
+    :root { --page-w: 42vw; --book-w: 84vw; --page-h: 56vw; --book-h: 56vw; }
+  }
+
+  /* Ambient cover glow */
+  .book-glow {
+    position: absolute;
+    inset: -120px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(232,200,122,0.15) 0%, rgba(95,200,255,0.06) 35%, transparent 65%);
+    filter: blur(20px);
+    pointer-events: none;
+    z-index: -1;
+    animation: glow-pulse 5s ease-in-out infinite;
+  }
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.7; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.08); }
+  }
+
+  /* The spine */
+  .spine {
+    position: absolute;
+    left: 50%; top: 0; bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, transparent 0%, var(--gold) 18%, var(--gold-deep) 50%, var(--gold) 82%, transparent 100%);
+    transform: translateX(-1px);
+    z-index: 50;
+    opacity: 0;
+    transition: opacity 0.6s 0.4s;
+  }
+  .book.open .spine { opacity: 0.7; }
+
+  /* Static base pages — always rendered, leaves flip on top of them */
+  .base {
+    position: absolute;
+    top: 0;
+    width: var(--page-w);
+    height: var(--page-h);
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), transparent 60%),
+      linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+    color: var(--paper-ink);
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  .base.left { left: 0; box-shadow: inset -8px 0 16px rgba(0,0,0,0.12); border-right: 1px solid rgba(0,0,0,0.06); }
+  .base.right { right: 0; box-shadow: inset 8px 0 16px rgba(0,0,0,0.12); border-left: 1px solid rgba(0,0,0,0.06); }
+  .base { opacity: 0; transition: opacity 0.6s; }
+  .book.open .base { opacity: 1; }
+
+  /* Leaves (cover + 5 inner) */
+  .leaf {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: var(--page-w);
+    height: var(--page-h);
+    transform-origin: 0% 50%;
+    transform-style: preserve-3d;
+    transition: transform var(--flip-ms) var(--flip-ease);
+    will-change: transform;
+  }
+  .leaf .face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+  }
+  .leaf .face.front {
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), transparent 60%),
+      linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+    color: var(--paper-ink);
+    box-shadow: inset 8px 0 16px rgba(0,0,0,0.12);
+    border-left: 1px solid rgba(0,0,0,0.06);
+  }
+  .leaf .face.back {
+    background:
+      radial-gradient(circle at 70% 20%, rgba(255,255,255,0.4), transparent 60%),
+      linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+    color: var(--paper-ink);
+    transform: rotateY(180deg);
+    box-shadow: inset -8px 0 16px rgba(0,0,0,0.12);
+    border-right: 1px solid rgba(0,0,0,0.06);
+  }
+  .leaf.flipped { transform: rotateY(-180deg); }
+
+  /* Cover specifically */
+  .cover.face.front {
+    background:
+      radial-gradient(circle at 30% 25%, rgba(232,200,122,0.2), transparent 55%),
+      radial-gradient(circle at 70% 75%, rgba(95,200,255,0.08), transparent 50%),
+      linear-gradient(160deg, #0e0e2a 0%, #050513 100%) !important;
+    color: var(--ink) !important;
+    box-shadow:
+      0 30px 80px rgba(0,0,0,0.6),
+      0 0 60px rgba(95,200,255,0.1),
+      inset 0 1px 0 rgba(255,255,255,0.05) !important;
+    border-left: 1px solid rgba(232,200,122,0.4) !important;
+    padding: 32px 24px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+  }
+  .cover.face.front::before {
+    content: '';
+    position: absolute;
+    inset: 14px;
+    border: 1px solid rgba(232,200,122,0.22);
+    pointer-events: none;
+  }
+  .cover.face.back {
+    background:
+      radial-gradient(circle at 70% 30%, rgba(232,200,122,0.1), transparent 55%),
+      linear-gradient(195deg, #0a0a22 0%, #050513 100%) !important;
+    color: var(--ink-dim) !important;
+    border-right: 1px solid rgba(232,200,122,0.3) !important;
+    padding: 36px 26px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+  }
+  .cover.face.back::before {
+    content: '';
+    position: absolute;
+    inset: 18px;
+    border: 1px solid rgba(232,200,122,0.14);
+    pointer-events: none;
+  }
+
+  /* Page content typography */
+  .pg {
+    padding: 38px 30px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    font-family: var(--serif);
+  }
+  .pg .pgnum {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.4);
+  }
+  .pg .pgnum.r { text-align: right; }
+  .pg .pgfoot {
+    margin-top: auto;
+    display: flex; justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.35);
+    padding-top: 16px;
+  }
+
+  .pg.cover-content {}
+  .cover-top {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .cover-title { text-align: center; }
+  .cover-title .t1 {
+    display: block;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 56px;
+    line-height: 0.92;
+    color: var(--ink);
+  }
+  .cover-title .t2 {
+    display: block;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 56px;
+    line-height: 0.92;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light), var(--gold-deep));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .cover-emblem {
+    width: 64px; height: 64px;
+    border: 1px solid var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 16px auto 0;
+    position: relative;
+  }
+  .cover-emblem::before, .cover-emblem::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(232,200,122,0.32);
+  }
+  .cover-emblem::before { inset: -8px; }
+  .cover-emblem::after { inset: 6px; border-color: rgba(95,200,255,0.4); }
+  .cover-emblem svg { width: 28px; height: 28px; position: relative; z-index: 1; }
+  .cover-bottom {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .cover-bottom .name {
+    display: block;
+    margin-top: 6px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--ink);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* Title page (left of spread 1) — decorative */
+  .title-page { padding: 26px 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; gap: 14px; }
+  .title-page .crest svg { width: 90px; height: 90px; color: var(--gold-deep); opacity: 0.85; }
+  .title-page .label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.5);
+  }
+  .title-page .tt {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 36px;
+    line-height: 1;
+    color: var(--paper-ink);
+  }
+  .title-page .sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: rgba(0,0,0,0.55);
+    max-width: 200px;
+    line-height: 1.4;
+  }
+  .title-page .divider { width: 40px; height: 1px; background: var(--gold-deep); opacity: 0.6; }
+  .title-page .by {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.5);
+  }
+  .title-page .author {
+    font-family: var(--serif);
+    font-size: 16px;
+    color: var(--paper-ink);
+    margin-top: 2px;
+  }
+
+  /* TOC */
+  .toc { padding: 32px 26px; height: 100%; display: flex; flex-direction: column; }
+  .toc .head {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.5);
+    margin-bottom: 4px;
+  }
+  .toc h3 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 30px;
+    line-height: 1;
+    color: var(--paper-ink);
+    margin-bottom: 24px;
+  }
+  .toc ol { list-style: none; }
+  .toc li {
+    display: flex; align-items: baseline; gap: 10px;
+    font-family: var(--serif);
+    font-size: 15px;
+    color: rgba(0,0,0,0.78);
+    padding: 6px 0;
+    border-bottom: 1px dotted rgba(0,0,0,0.12);
+  }
+  .toc li .rn {
+    font-style: italic;
+    font-size: 14px;
+    color: var(--gold-deep);
+    min-width: 22px;
+  }
+  .toc li .ti { flex: 1; }
+  .toc li .pg {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: rgba(0,0,0,0.45);
+    padding: 0;
+  }
+
+  /* Chapter title (left side of chapter spreads) */
+  .ch-left { padding: 30px 26px; display: flex; flex-direction: column; height: 100%; }
+  .ch-left .roman {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 240px;
+    line-height: 0.78;
+    color: var(--gold-deep);
+    opacity: 0.85;
+    align-self: flex-start;
+  }
+  .ch-left .ch-num {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.5);
+    margin-top: auto;
+  }
+  .ch-left .ch-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 30px;
+    line-height: 1;
+    color: var(--paper-ink);
+    margin-top: 8px;
+    margin-bottom: 14px;
+  }
+  .ch-left .ch-rule { width: 36px; height: 1px; background: var(--gold-deep); opacity: 0.7; }
+
+  /* Chapter prose (right side) */
+  .ch-right { padding: 30px 26px; display: flex; flex-direction: column; height: 100%; position: relative; }
+  .ch-right .opener {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.45);
+    margin-bottom: 14px;
+  }
+  .ch-right p {
+    font-family: var(--serif);
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: rgba(0,0,0,0.82);
+    margin-bottom: 10px;
+    text-align: justify;
+    hyphens: auto;
+  }
+  .ch-right p:first-of-type::first-letter {
+    font-size: 2.6em;
+    float: left;
+    line-height: 0.85;
+    padding-right: 6px;
+    padding-top: 2px;
+    color: var(--gold-deep);
+    font-style: italic;
+  }
+  .ch-right .quote {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--paper-ink);
+    padding: 12px 0;
+    border-top: 1px solid rgba(0,0,0,0.14);
+    border-bottom: 1px solid rgba(0,0,0,0.14);
+    margin: 6px 0;
+    text-align: center;
+  }
+  .ch-right .pgfoot { margin-top: auto; }
+
+  /* ───────────── Closing overlay ───────────── */
+  .closing-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+  .closing-overlay.active { opacity: 1; pointer-events: auto; }
+  .closing-overlay .panel {
+    position: absolute;
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: auto;
+  }
+  .closing-overlay .panel .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 16px;
+  }
+  .closing-overlay .panel .ttl {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(28px, 4vw, 48px);
+    line-height: 1.1;
+    color: var(--ink);
+    margin-bottom: 14px;
+  }
+  .closing-overlay .panel .ttl em {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light), var(--gold-deep));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-style: italic;
+  }
+  .closing-overlay .panel .sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--ink-dim);
+    margin-bottom: 28px;
+    max-width: 460px;
+  }
+  .closing-overlay .panel .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .closing-overlay .panel .credit {
+    margin-top: 36px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .closing-overlay .panel .credit .gold { color: var(--gold); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 16px 28px;
+    border: 1px solid var(--gold);
+    background: transparent;
+    color: var(--gold);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+  }
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-deep) 100%);
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .btn:hover::before { transform: translateY(0); }
+  .btn:hover { color: var(--bg-deep); box-shadow: 0 12px 32px rgba(232,200,122,0.3); }
+  .btn span, .btn .arrow { position: relative; z-index: 1; }
+  .btn .arrow {
+    width: 16px; height: 1px;
+    background: currentColor;
+    position: relative;
+    transition: transform 0.4s;
+  }
+  .btn .arrow::after {
+    content: '';
+    position: absolute;
+    right: 0; top: -3px;
+    width: 6px; height: 6px;
+    border-right: 1px solid currentColor;
+    border-top: 1px solid currentColor;
+    transform: rotate(45deg);
+  }
+  .btn:hover .arrow { transform: translateX(6px); }
+  .btn.ghost { border-color: var(--line); color: var(--ink-dim); }
+  .btn.ghost::before { display: none; }
+  .btn.ghost:hover { color: var(--ink); border-color: var(--ink); background: rgba(244,241,232,0.04); box-shadow: none; }
+
+  /* ───────────── Scene art ───────────── */
+
+  /* Scene 1 — gold dust */
+  .gold-dust .dust {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: var(--gold);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--gold);
+    animation: rise 8s linear infinite;
+    opacity: 0.6;
+  }
+  @keyframes rise {
+    0% { transform: translateY(0); opacity: 0; }
+    20% { opacity: 0.8; }
+    100% { transform: translateY(-110vh); opacity: 0; }
+  }
+
+  /* Scene 2 — single glowing neuron */
+  .neuron-bg {
+    display: flex; align-items: center; justify-content: center;
+  }
+  .neuron-bg .core {
+    width: 80vmin; height: 80vmin;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,200,122,0.18) 0%, rgba(95,200,255,0.05) 30%, transparent 60%);
+    filter: blur(20px);
+    animation: neuron-pulse 4s ease-in-out infinite;
+  }
+  @keyframes neuron-pulse {
+    0%, 100% { transform: scale(0.85); opacity: 0.6; }
+    50% { transform: scale(1.1); opacity: 1; }
+  }
+  .neuron-bg .ring {
+    position: absolute;
+    width: 60vmin; height: 60vmin;
+    border-radius: 50%;
+    border: 1px solid rgba(232,200,122,0.15);
+    animation: rotate-slow 60s linear infinite;
+  }
+  .neuron-bg .ring.r2 { width: 80vmin; height: 80vmin; border-color: rgba(95,200,255,0.1); animation-duration: 80s; animation-direction: reverse; }
+  .neuron-bg .ring.r3 { width: 100vmin; height: 100vmin; border-color: rgba(232,200,122,0.08); animation-duration: 100s; }
+  .neuron-bg .ring::before {
+    content: '';
+    position: absolute;
+    top: -3px; left: 50%;
+    transform: translateX(-50%);
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 10px var(--gold);
+  }
+  @keyframes rotate-slow { to { transform: rotate(360deg); } }
+
+  /* Scene 3 — waveform lines */
+  .waves-bg {
+    overflow: hidden;
+  }
+  .waves-bg svg {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+  }
+  .waves-bg .w {
+    stroke: var(--blue);
+    fill: none;
+    stroke-width: 0.5;
+    opacity: 0.4;
+  }
+  .waves-bg .w.g { stroke: var(--gold); opacity: 0.3; }
+
+  /* Scene 4 — image frames */
+  .frames-bg {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 24px;
+    padding: 80px 60px;
+    align-content: center;
+  }
+  .frames-bg .frame {
+    aspect-ratio: 4 / 3;
+    border: 1px solid rgba(95,200,255,0.18);
+    background: rgba(95,200,255,0.04);
+    border-radius: 2px;
+    position: relative;
+    animation: frame-glow 4s ease-in-out infinite;
+  }
+  .frames-bg .frame::before {
+    content: '';
+    position: absolute;
+    inset: 30%;
+    border: 1px solid rgba(232,200,122,0.2);
+    border-radius: 50%;
+  }
+  @keyframes frame-glow {
+    0%, 100% { opacity: 0.25; box-shadow: none; }
+    50% { opacity: 0.7; box-shadow: 0 0 20px rgba(95,200,255,0.2); }
+  }
+
+  /* Scene 5 — connected nodes */
+  .nodes-bg svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .nodes-bg .node {
+    fill: var(--gold);
+    filter: drop-shadow(0 0 6px var(--gold));
+    animation: node-pulse 2.4s ease-in-out infinite;
+  }
+  .nodes-bg .node.b { fill: var(--blue); filter: drop-shadow(0 0 6px var(--blue)); }
+  .nodes-bg .edge { stroke: rgba(232,200,122,0.18); stroke-width: 0.3; fill: none; stroke-dasharray: 1 1; }
+  @keyframes node-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* Scene 6 — radiant bloom */
+  .bloom-bg {
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bloom-bg .bloom {
+    width: 40vmin; height: 40vmin;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 243, 196, 0.7) 0%, rgba(232,200,122,0.4) 20%, rgba(95,200,255,0.15) 45%, transparent 70%);
+    filter: blur(40px);
+    animation: bloom-grow 6s ease-in-out infinite;
+  }
+  @keyframes bloom-grow {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.6); opacity: 1; }
+  }
+  .bloom-bg .ray {
+    position: absolute;
+    width: 200vmin; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    transform-origin: center;
+    opacity: 0.18;
+  }
+
+  /* Scene 7 — converging particles */
+  .converge-bg {
+    overflow: hidden;
+  }
+  .converge-bg .p {
+    position: absolute;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 8px var(--gold);
+    animation: converge 6s ease-in infinite;
+  }
+  .converge-bg .p.b { background: var(--blue); box-shadow: 0 0 8px var(--blue); }
+  @keyframes converge {
+    0% { transform: translate(var(--sx), var(--sy)) scale(1); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translate(0, 0) scale(0.2); opacity: 0; }
+  }
+
+  /* ───────────── Floating elements ───────────── */
+  .float-brain, .float-eye, .float-people {
+    color: var(--gold);
+    filter: drop-shadow(0 0 12px rgba(232,200,122,0.5));
+  }
+  .float-brain { top: 22%; left: 14%; animation: drift 8s ease-in-out infinite; }
+  .float-eye { top: 18%; right: 16%; animation: drift 7s ease-in-out infinite reverse; }
+  .float-people { bottom: 18%; left: 50%; transform: translateX(-50%); }
+  @keyframes drift {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-14px) rotate(4deg); }
+  }
+  .float svg { width: 56px; height: 56px; }
+  .float.float-people svg { width: 120px; height: 56px; }
+
+  /* Chat bubbles (scene 3 floats) */
+  .float-bubble {
+    background: rgba(95,200,255,0.08);
+    border: 1px solid rgba(95,200,255,0.4);
+    color: var(--blue);
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 20px rgba(95,200,255,0.2);
+  }
+  .float-bubble.b1 { top: 26%; left: 18%; animation: drift 6s ease-in-out infinite; }
+  .float-bubble.b2 { top: 32%; right: 17%; animation: drift 7s ease-in-out infinite reverse; }
+  .float-bubble.b3 { bottom: 24%; left: 22%; animation: drift 8s ease-in-out infinite; }
+
+  /* Rising dots (scene 5 floats) */
+  .float-graph {
+    bottom: 16%; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: flex-end; gap: 8px; height: 60px;
+  }
+  .float-graph .bar {
+    width: 6px;
+    background: linear-gradient(180deg, var(--gold), var(--blue));
+    border-radius: 3px;
+    box-shadow: 0 0 8px var(--gold);
+    animation: bar-rise 1.8s ease-in-out infinite;
+  }
+  @keyframes bar-rise {
+    0%, 100% { height: 20%; }
+    50% { height: 100%; }
+  }
+
+  /* ───────────── Initial loader ───────────── */
+  .boot {
+    position: fixed; inset: 0;
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-deep);
+    transition: opacity 0.8s, visibility 0.8s;
+  }
+  .boot.gone { opacity: 0; visibility: hidden; }
+  .boot .mark {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 32px;
+    color: var(--gold);
+    letter-spacing: 0.02em;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  ::selection { background: var(--gold); color: var(--bg-deep); }
+</style>
+</head>
+<body>
+
+<div class="boot" id="boot"><div class="mark">Bot Book</div></div>
+
+<!-- ───────── Backgrounds ───────── -->
+<canvas id="stars"></canvas>
+<canvas id="orbs"></canvas>
+
+<!-- ───────── Per-state scenes ───────── -->
+<div class="scenes">
+  <div class="scene" data-state="0"></div>
+
+  <div class="scene gold-dust" data-state="1" id="scene-dust"></div>
+
+  <div class="scene neuron-bg" data-state="2">
+    <div class="core"></div>
+    <div class="ring"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+  </div>
+
+  <div class="scene waves-bg" data-state="3">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+      <path class="w" d="M0,50 Q12.5,40 25,50 T50,50 T75,50 T100,50"><animate attributeName="d" dur="6s" repeatCount="indefinite" values="M0,50 Q12.5,40 25,50 T50,50 T75,50 T100,50;M0,50 Q12.5,60 25,50 T50,50 T75,50 T100,50;M0,50 Q12.5,40 25,50 T50,50 T75,50 T100,50"/></path>
+      <path class="w g" d="M0,40 Q12.5,30 25,40 T50,40 T75,40 T100,40"><animate attributeName="d" dur="8s" repeatCount="indefinite" values="M0,40 Q12.5,30 25,40 T50,40 T75,40 T100,40;M0,40 Q12.5,50 25,40 T50,40 T75,40 T100,40;M0,40 Q12.5,30 25,40 T50,40 T75,40 T100,40"/></path>
+      <path class="w" d="M0,60 Q12.5,70 25,60 T50,60 T75,60 T100,60"><animate attributeName="d" dur="7s" repeatCount="indefinite" values="M0,60 Q12.5,70 25,60 T50,60 T75,60 T100,60;M0,60 Q12.5,50 25,60 T50,60 T75,60 T100,60;M0,60 Q12.5,70 25,60 T50,60 T75,60 T100,60"/></path>
+      <path class="w g" d="M0,70 Q12.5,80 25,70 T50,70 T75,70 T100,70"><animate attributeName="d" dur="9s" repeatCount="indefinite" values="M0,70 Q12.5,80 25,70 T50,70 T75,70 T100,70;M0,70 Q12.5,60 25,70 T50,70 T75,70 T100,70;M0,70 Q12.5,80 25,70 T50,70 T75,70 T100,70"/></path>
+      <path class="w" d="M0,30 Q12.5,20 25,30 T50,30 T75,30 T100,30"><animate attributeName="d" dur="10s" repeatCount="indefinite" values="M0,30 Q12.5,20 25,30 T50,30 T75,30 T100,30;M0,30 Q12.5,40 25,30 T50,30 T75,30 T100,30;M0,30 Q12.5,20 25,30 T50,30 T75,30 T100,30"/></path>
+    </svg>
+  </div>
+
+  <div class="scene frames-bg" data-state="4" id="scene-frames"></div>
+
+  <div class="scene nodes-bg" data-state="5">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" id="nodes-svg"></svg>
+  </div>
+
+  <div class="scene bloom-bg" data-state="6">
+    <div class="bloom"></div>
+    <div class="ray" style="transform: rotate(0deg);"></div>
+    <div class="ray" style="transform: rotate(30deg);"></div>
+    <div class="ray" style="transform: rotate(60deg);"></div>
+    <div class="ray" style="transform: rotate(90deg);"></div>
+    <div class="ray" style="transform: rotate(120deg);"></div>
+    <div class="ray" style="transform: rotate(150deg);"></div>
+  </div>
+
+  <div class="scene converge-bg" data-state="7" id="scene-converge"></div>
+</div>
+
+<!-- ───────── Per-state floats ───────── -->
+<div class="floats">
+  <div class="float float-brain" data-state="2">
+    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.2">
+      <path d="M24 16 q-8 0 -8 8 v4 q-4 2 -4 8 q0 6 4 8 v4 q0 8 8 8 q4 0 6 -2 v-30 q-2 -8 -6 -8 z"/>
+      <path d="M40 16 q8 0 8 8 v4 q4 2 4 8 q0 6 -4 8 v4 q0 8 -8 8 q-4 0 -6 -2 v-30 q2 -8 6 -8 z"/>
+      <circle cx="32" cy="32" r="2" fill="currentColor"/>
+      <path d="M20 28 h6 M38 28 h6 M20 36 h6 M38 36 h6"/>
+    </svg>
+  </div>
+
+  <div class="float float-bubble b1" data-state="3">Bot ▸ Try this</div>
+  <div class="float float-bubble b2" data-state="3">Bot ▸ Consider</div>
+  <div class="float float-bubble b3" data-state="3">Bot ▸ Perhaps</div>
+
+  <div class="float float-eye" data-state="4">
+    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.2">
+      <path d="M4 32 q12 -20 28 -20 t28 20 q-12 20 -28 20 t-28 -20z"/>
+      <circle cx="32" cy="32" r="10"/>
+      <circle cx="32" cy="32" r="3" fill="currentColor"/>
+      <circle cx="36" cy="28" r="1.5" fill="#07071a"/>
+    </svg>
+  </div>
+
+  <div class="float float-graph" data-state="5">
+    <div class="bar" style="animation-delay: 0s;"></div>
+    <div class="bar" style="animation-delay: 0.2s;"></div>
+    <div class="bar" style="animation-delay: 0.4s;"></div>
+    <div class="bar" style="animation-delay: 0.6s;"></div>
+    <div class="bar" style="animation-delay: 0.8s;"></div>
+    <div class="bar" style="animation-delay: 1.0s;"></div>
+    <div class="bar" style="animation-delay: 1.2s;"></div>
+  </div>
+
+  <div class="float float-people" data-state="6">
+    <svg viewBox="0 0 120 56" fill="none" stroke="currentColor" stroke-width="1.2">
+      <circle cx="32" cy="20" r="9"/>
+      <path d="M18 52 q0 -14 14 -14 t14 14"/>
+      <circle cx="88" cy="20" r="9"/>
+      <rect x="74" y="38" width="28" height="14" rx="2"/>
+      <line x1="84" y1="38" x2="84" y2="34"/>
+      <line x1="92" y1="38" x2="92" y2="34"/>
+      <circle cx="84" cy="22" r="1" fill="currentColor"/>
+      <circle cx="92" cy="22" r="1" fill="currentColor"/>
+      <path d="M48 30 q6 -6 12 0 q6 6 12 0" stroke-dasharray="2 2"/>
+    </svg>
+  </div>
+</div>
+
+<!-- ───────── Topbar ───────── -->
+<header class="topbar">
+  <div class="brand"><span class="dot"></span><span>Bot Book · Vol. I</span></div>
+  <div class="state-readout">
+    <span>Page</span>
+    <span class="bar"></span>
+    <span class="num" id="state-num">00</span>
+    <span class="bar"></span>
+    <span>of 07</span>
+  </div>
+</header>
+
+<!-- ───────── Side meta ───────── -->
+<aside class="sidemeta">
+  <span class="label">A Field Manual</span>
+  for the Age of Intelligence
+  <span class="author">Bot Please</span>
+</aside>
+
+<!-- ───────── Progress rail ───────── -->
+<aside class="rail" id="rail">
+  <button class="dot" data-go="0" data-label="Cover"></button>
+  <button class="dot" data-go="1" data-label="Open · Contents"></button>
+  <button class="dot" data-go="2" data-label="I · Birth of Bot"></button>
+  <button class="dot" data-go="3" data-label="II · Bot Speaks"></button>
+  <button class="dot" data-go="4" data-label="III · Bot Sees"></button>
+  <button class="dot" data-go="5" data-label="IV · Bot Learns"></button>
+  <button class="dot" data-go="6" data-label="V · Bot Future"></button>
+  <button class="dot" data-go="7" data-label="Close · Acquire"></button>
+</aside>
+
+<!-- ───────── World text (above + below book) ───────── -->
+<div class="world">
+  <div class="world-inner">
+
+    <!-- ABOVE -->
+    <div class="world-above">
+      <div class="world-layer" data-state="0">
+        <div class="eyebrow">2026 · First Edition</div>
+        <div class="head"><em>Bot Book.</em></div>
+      </div>
+      <div class="world-layer" data-state="1">
+        <div class="eyebrow">Inside the volume</div>
+        <div class="head">An <em>opening.</em></div>
+      </div>
+      <div class="world-layer" data-state="2">
+        <div class="eyebrow">Chapter I &middot; The Origin</div>
+        <div class="head">A small <em>spark.</em></div>
+      </div>
+      <div class="world-layer" data-state="3">
+        <div class="eyebrow">Chapter II &middot; The Voice</div>
+        <div class="head">A measured <em>reply.</em></div>
+      </div>
+      <div class="world-layer" data-state="4">
+        <div class="eyebrow">Chapter III &middot; The Eye</div>
+        <div class="head">Pictures, <em>not words.</em></div>
+      </div>
+      <div class="world-layer" data-state="5">
+        <div class="eyebrow">Chapter IV &middot; The Study</div>
+        <div class="head">A patient <em>mind.</em></div>
+      </div>
+      <div class="world-layer" data-state="6">
+        <div class="eyebrow">Chapter V &middot; The Horizon</div>
+        <div class="head">A quiet <em>collaboration.</em></div>
+      </div>
+      <div class="world-layer" data-state="7">
+        <div class="eyebrow">End of Volume I</div>
+        <div class="head">Close the <em>book.</em></div>
+      </div>
+    </div>
+
+    <!-- BELOW -->
+    <div class="world-below">
+      <div class="world-layer" data-state="0">
+        <div class="crumbs"><span class="now">Closed</span><span class="sep">·</span><span>scroll to open</span><span class="sep">·</span><span>by Bot Please</span></div>
+      </div>
+      <div class="world-layer" data-state="1">
+        <div class="crumbs"><span>Cover</span><span class="sep">·</span><span class="now">Contents</span><span class="sep">·</span><span>5 chapters &middot; 412 pages</span></div>
+      </div>
+      <div class="world-layer" data-state="2">
+        <div class="crumbs"><span class="now">I &middot; The Birth of Bot</span><span class="sep">·</span><span>pp. 003&ndash;046</span><span class="sep">·</span><span>est. read 11 min</span></div>
+      </div>
+      <div class="world-layer" data-state="3">
+        <div class="crumbs"><span class="now">II &middot; Bot Speaks</span><span class="sep">·</span><span>pp. 048&ndash;112</span><span class="sep">·</span><span>est. read 16 min</span></div>
+      </div>
+      <div class="world-layer" data-state="4">
+        <div class="crumbs"><span class="now">III &middot; Bot Sees</span><span class="sep">·</span><span>pp. 134&ndash;198</span><span class="sep">·</span><span>est. read 19 min</span></div>
+      </div>
+      <div class="world-layer" data-state="5">
+        <div class="crumbs"><span class="now">IV &middot; Bot Learns</span><span class="sep">·</span><span>pp. 221&ndash;312</span><span class="sep">·</span><span>est. read 22 min</span></div>
+      </div>
+      <div class="world-layer" data-state="6">
+        <div class="crumbs"><span class="now">V &middot; Bot Future</span><span class="sep">·</span><span>pp. 354&ndash;408</span><span class="sep">·</span><span>est. read 15 min</span></div>
+      </div>
+      <div class="world-layer" data-state="7">
+        <div class="crumbs"><span class="now">Volume Closed</span><span class="sep">·</span><span>ISBN 978-0-00-000000-0</span><span class="sep">·</span><span>Hardcover</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ───────── BOOK ───────── -->
+<div class="book-anchor">
+  <div class="book" id="book">
+    <div class="book-glow"></div>
+    <div class="spine"></div>
+
+    <!-- Base pages (always present underneath leaves) -->
+    <!-- LEFT base = title page (decorative) — visible from state 1 onward -->
+    <div class="base left">
+      <div class="title-page">
+        <div class="label">Bot Please · 2026</div>
+        <div class="crest">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="0.8">
+            <circle cx="32" cy="32" r="20"/>
+            <circle cx="32" cy="32" r="12"/>
+            <circle cx="32" cy="32" r="4" fill="currentColor"/>
+            <path d="M32 4 v8 M32 52 v8 M4 32 h8 M52 32 h8"/>
+            <path d="M12 12 l6 6 M46 46 l6 6 M12 52 l6 -6 M46 18 l6 -6"/>
+            <circle cx="32" cy="12" r="1.5" fill="currentColor"/>
+            <circle cx="32" cy="52" r="1.5" fill="currentColor"/>
+            <circle cx="12" cy="32" r="1.5" fill="currentColor"/>
+            <circle cx="52" cy="32" r="1.5" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="tt">Bot Book</div>
+        <div class="divider"></div>
+        <div class="sub">A field manual for the age of intelligent machines</div>
+        <div class="by">written by</div>
+        <div class="author">Bot Please</div>
+      </div>
+    </div>
+
+    <!-- RIGHT base = Chapter V prose — only revealed after all leaves flip -->
+    <div class="base right">
+      <div class="pg ch-right">
+        <div class="pgnum r">Chapter V &middot; pg. 388</div>
+        <p style="margin-top: 14px;">The future of these machines is not, despite the headlines, mostly about replacement. It is about <em>company</em> — a thousand quiet collaborations the day will barely notice making.</p>
+        <p>The Bots that matter most will be the ones we forget to notice. They will finish our sentences before we knew we were writing them, and we will be most ourselves in their company.</p>
+        <div class="quote">"The age of intelligence is not coming. It is here, quietly, holding the door."</div>
+        <p style="text-align:right; font-style:italic; margin-top: 6px;">&mdash; B.&nbsp;P., 2026</p>
+        <div class="pgfoot"><span>V &middot; Bot Future</span><span>388</span></div>
+      </div>
+    </div>
+
+    <!-- LEAF: COVER -->
+    <div class="leaf cover-leaf" id="leaf-cover">
+      <div class="face front cover">
+        <div class="cover-top">Bot Please &middot; MMXXVI</div>
+        <div>
+          <div class="cover-title">
+            <span class="t1">Bot</span>
+            <span class="t2">Book.</span>
+          </div>
+          <div class="cover-emblem">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.2" style="color: var(--gold);">
+              <circle cx="16" cy="16" r="6"/>
+              <circle cx="16" cy="16" r="2" fill="currentColor"/>
+              <path d="M16 4 v4 M16 24 v4 M4 16 h4 M24 16 h4 M7.5 7.5 l2.8 2.8 M21.7 21.7 l2.8 2.8 M7.5 24.5 l2.8 -2.8 M21.7 10.3 l2.8 -2.8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="cover-bottom">A Field Manual<span class="name">Bot Please</span></div>
+      </div>
+      <div class="face back cover">
+        <div style="font-family:var(--mono); font-size:8px; letter-spacing:0.28em; text-transform:uppercase; color:var(--gold); text-align:right;">Inside cover</div>
+        <div style="text-align:center; padding: 0 14px;">
+          <div style="font-family:var(--serif); font-style:italic; font-size:22px; line-height:1.3; color:var(--ink);">"They knew the machine was a machine. They told it their troubles anyway."</div>
+          <div style="font-family:var(--mono); font-size:9px; letter-spacing:0.2em; text-transform:uppercase; color:var(--ink-faint); margin-top:14px;">&mdash; ELIZA log, MIT 1966</div>
+        </div>
+        <div style="font-family:var(--mono); font-size:8px; letter-spacing:0.24em; text-transform:uppercase; color:var(--ink-dim); text-align:center;">Vol. I &middot; 412 pages</div>
+      </div>
+    </div>
+
+    <!-- LEAF 1: TOC (front) / Chapter I title (back) -->
+    <div class="leaf" id="leaf-1">
+      <div class="face front">
+        <div class="toc">
+          <div class="head">Contents</div>
+          <h3>Five chapters,<br/><em>one machine.</em></h3>
+          <ol>
+            <li><span class="rn">i.</span><span class="ti">The Birth of Bot</span><span class="pg">003</span></li>
+            <li><span class="rn">ii.</span><span class="ti">Bot Speaks</span><span class="pg">048</span></li>
+            <li><span class="rn">iii.</span><span class="ti">Bot Sees</span><span class="pg">134</span></li>
+            <li><span class="rn">iv.</span><span class="ti">Bot Learns</span><span class="pg">221</span></li>
+            <li><span class="rn">v.</span><span class="ti">Bot Future</span><span class="pg">354</span></li>
+          </ol>
+          <div class="pgfoot"><span>Table of Contents</span><span>vii</span></div>
+        </div>
+      </div>
+      <div class="face back">
+        <div class="pg ch-left">
+          <div class="roman">I</div>
+          <div class="ch-num">Chapter One</div>
+          <div class="ch-title">The Birth of <em>Bot</em></div>
+          <div class="ch-rule"></div>
+          <div class="pgfoot"><span>I</span><span>002</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEAF 2: Ch1 prose / Chapter II title -->
+    <div class="leaf" id="leaf-2">
+      <div class="face front">
+        <div class="pg ch-right">
+          <div class="opener">Chapter I &middot; pg. 003</div>
+          <p>In a Massachusetts laboratory in the winter of 1966, a program named ELIZA invited its users to talk. It was little more than a clever mirror &mdash; a parser reflecting statements back as questions &mdash; and yet they confided in it.</p>
+          <p>Sixty winters later, the descendants of that mirror sit between us and almost everything: our calendars, our cameras, our quietest hours of doubt.</p>
+          <div class="quote">"The machine was a machine. They told it their troubles anyway."</div>
+          <div class="pgfoot"><span>I &middot; The Birth of Bot</span><span>003</span></div>
+        </div>
+      </div>
+      <div class="face back">
+        <div class="pg ch-left">
+          <div class="roman">II</div>
+          <div class="ch-num">Chapter Two</div>
+          <div class="ch-title">Bot <em>Speaks</em></div>
+          <div class="ch-rule"></div>
+          <div class="pgfoot"><span>II</span><span>047</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEAF 3: Ch2 prose / Chapter III title -->
+    <div class="leaf" id="leaf-3">
+      <div class="face front">
+        <div class="pg ch-right">
+          <div class="opener">Chapter II &middot; pg. 048</div>
+          <p>Modern language models are, strictly, professional guessers. They predict the next word given what came before, with a thoroughness no human mind could sustain.</p>
+          <p>The remarkable thing is not that they guess. It is that, after enough practice, their guesses come to resemble understanding so closely that the difference, in most rooms, stops mattering.</p>
+          <div class="quote">"A Bot does not give orders. It offers options dressed as opinions."</div>
+          <div class="pgfoot"><span>II &middot; Bot Speaks</span><span>048</span></div>
+        </div>
+      </div>
+      <div class="face back">
+        <div class="pg ch-left">
+          <div class="roman">III</div>
+          <div class="ch-num">Chapter Three</div>
+          <div class="ch-title">Bot <em>Sees</em></div>
+          <div class="ch-rule"></div>
+          <div class="pgfoot"><span>III</span><span>133</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEAF 4: Ch3 prose / Chapter IV title -->
+    <div class="leaf" id="leaf-4">
+      <div class="face front">
+        <div class="pg ch-right">
+          <div class="opener">Chapter III &middot; pg. 134</div>
+          <p>Sight is older than language and stubbornly hard to describe in it. When a Bot is asked to look &mdash; to find a tumor, read a sign, recognize a face &mdash; it does not narrate what it finds. It points.</p>
+          <p>The best of these machines no longer answer in sentences at all. They <em>render</em>. They sketch a chart, draw a map, paint a picture, and trust the eye to finish the work.</p>
+          <div class="quote">"The best Bots no longer describe. They render."</div>
+          <div class="pgfoot"><span>III &middot; Bot Sees</span><span>134</span></div>
+        </div>
+      </div>
+      <div class="face back">
+        <div class="pg ch-left">
+          <div class="roman">IV</div>
+          <div class="ch-num">Chapter Four</div>
+          <div class="ch-title">Bot <em>Learns</em></div>
+          <div class="ch-rule"></div>
+          <div class="pgfoot"><span>IV</span><span>220</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEAF 5: Ch4 prose / Chapter V title -->
+    <div class="leaf" id="leaf-5">
+      <div class="face front">
+        <div class="pg ch-right">
+          <div class="opener">Chapter IV &middot; pg. 221</div>
+          <p>A neural network does not study. It is studied &mdash; by an algorithm that adjusts its inner numbers a vanishingly small amount each time it is wrong.</p>
+          <p>Multiplied by billions of examples, this shyness becomes intelligence. What we call training, the machine experiences as the longest sentence ever written.</p>
+          <div class="quote">"Learning, it turns out, is mostly the willingness to be wrong on schedule."</div>
+          <div class="pgfoot"><span>IV &middot; Bot Learns</span><span>221</span></div>
+        </div>
+      </div>
+      <div class="face back">
+        <div class="pg ch-left">
+          <div class="roman">V</div>
+          <div class="ch-num">Chapter Five</div>
+          <div class="ch-title">Bot <em>Future</em></div>
+          <div class="ch-rule"></div>
+          <div class="pgfoot"><span>V</span><span>353</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ───────── Hint ───────── -->
+<div class="hint" id="hint">
+  <span>Scroll to turn the page</span>
+  <span class="line"></span>
+</div>
+
+<!-- ───────── Closing overlay ───────── -->
+<div class="closing-overlay" id="closing">
+  <div class="panel">
+    <div class="tag">End of Volume I</div>
+    <div class="ttl">The story has just <em>begun.</em></div>
+    <div class="sub">412 pages. Foil-stamped spine, ribbon marker, bone-white stock. Shipping from the spring equinox of 2026.</div>
+    <div class="cta-row">
+      <a class="btn" href="#"><span>Get the Book</span><span class="arrow"></span></a>
+      <a class="btn ghost" href="#" onclick="window.__goto(1); return false;"><span>Read Again</span></a>
+    </div>
+    <div class="credit">© MMXXVI &middot; <span class="gold">Bot Please</span> &middot; ISBN 978-0-00-000000-0</div>
+  </div>
+</div>
+
+<script>
+/* ════════════ Stars canvas ════════════ */
+(function() {
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  let w, h, dpr, list = [];
+  function size() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = c.width = innerWidth * dpr;
+    h = c.height = innerHeight * dpr;
+    c.style.width = innerWidth + 'px';
+    c.style.height = innerHeight + 'px';
+    list = [];
+    const count = Math.floor((innerWidth * innerHeight) / 3200);
+    for (let i = 0; i < count; i++) {
+      list.push({
+        x: Math.random() * w, y: Math.random() * h,
+        r: Math.random() * 1.2 * dpr + 0.2 * dpr,
+        a: Math.random() * 0.6 + 0.2,
+        s: Math.random() * 0.5 + 0.2,
+        phase: Math.random() * Math.PI * 2,
+        color: Math.random() > 0.85 ? '#e8c87a' : (Math.random() > 0.7 ? '#5fc8ff' : '#ffffff')
+      });
+    }
+  }
+  let t = 0;
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    t += 0.012;
+    const intensity = window.__starIntensity || 1;
+    for (const s of list) {
+      const tw = 0.5 + 0.5 * Math.sin(t * s.s + s.phase);
+      ctx.globalAlpha = s.a * tw * intensity;
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r * (0.8 + 0.4 * tw), 0, Math.PI * 2);
+      ctx.fill();
+      if (s.color !== '#ffffff') {
+        ctx.globalAlpha = s.a * tw * 0.3 * intensity;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(draw);
+  }
+  size(); draw();
+  addEventListener('resize', size);
+})();
+
+/* ════════════ Mouse-reactive orbs ════════════ */
+(function() {
+  const c = document.getElementById('orbs');
+  const ctx = c.getContext('2d');
+  let w, h, dpr, items = [], mx = 0, my = 0;
+  function size() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = c.width = innerWidth * dpr;
+    h = c.height = innerHeight * dpr;
+    c.style.width = innerWidth + 'px';
+    c.style.height = innerHeight + 'px';
+    items = [];
+    for (let i = 0; i < 22; i++) {
+      items.push({
+        x: Math.random() * w, y: Math.random() * h,
+        r: (Math.random() * 2 + 0.6) * dpr,
+        vx: (Math.random() - 0.5) * 0.18,
+        vy: (Math.random() - 0.5) * 0.18,
+        color: Math.random() > 0.5 ? '#e8c87a' : '#5fc8ff'
+      });
+    }
+    mx = w / 2; my = h / 2;
+  }
+  addEventListener('mousemove', (e) => { mx = e.clientX * dpr; my = e.clientY * dpr; });
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    for (const o of items) {
+      const dx = mx - o.x, dy = my - o.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 220 * dpr) {
+        const force = (220 * dpr - dist) / (220 * dpr) * 0.6;
+        o.vx -= (dx / dist) * force * 0.06;
+        o.vy -= (dy / dist) * force * 0.06;
+      }
+      o.x += o.vx; o.y += o.vy;
+      o.vx *= 0.985; o.vy *= 0.985;
+      o.vx += (Math.random() - 0.5) * 0.02;
+      o.vy += (Math.random() - 0.5) * 0.02;
+      if (o.x < 0) o.x = w; if (o.x > w) o.x = 0;
+      if (o.y < 0) o.y = h; if (o.y > h) o.y = 0;
+      const grad = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r * 8);
+      grad.addColorStop(0, o.color + 'cc');
+      grad.addColorStop(0.4, o.color + '33');
+      grad.addColorStop(1, o.color + '00');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = o.color;
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2); ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  size(); draw();
+  addEventListener('resize', size);
+})();
+
+/* ════════════ Gold dust scene ════════════ */
+(function() {
+  const wrap = document.getElementById('scene-dust');
+  for (let i = 0; i < 30; i++) {
+    const d = document.createElement('span');
+    d.className = 'dust';
+    d.style.left = (Math.random() * 100) + 'vw';
+    d.style.top = '100vh';
+    d.style.animationDelay = (Math.random() * 8) + 's';
+    d.style.animationDuration = (6 + Math.random() * 6) + 's';
+    d.style.opacity = (0.4 + Math.random() * 0.5);
+    wrap.appendChild(d);
+  }
+})();
+
+/* ════════════ Frames scene ════════════ */
+(function() {
+  const wrap = document.getElementById('scene-frames');
+  for (let i = 0; i < 30; i++) {
+    const f = document.createElement('div');
+    f.className = 'frame';
+    f.style.animationDelay = (Math.random() * 4) + 's';
+    wrap.appendChild(f);
+  }
+})();
+
+/* ════════════ Neural nodes scene ════════════ */
+(function() {
+  const svg = document.getElementById('nodes-svg');
+  // Build a small graph of nodes + edges
+  const layers = [
+    [{ x: 18, y: 30 }, { x: 18, y: 50 }, { x: 18, y: 70 }],
+    [{ x: 38, y: 22 }, { x: 38, y: 40 }, { x: 38, y: 60 }, { x: 38, y: 78 }],
+    [{ x: 62, y: 22 }, { x: 62, y: 40 }, { x: 62, y: 60 }, { x: 62, y: 78 }],
+    [{ x: 82, y: 35 }, { x: 82, y: 55 }, { x: 82, y: 75 }]
+  ];
+  // Edges
+  let edges = '';
+  for (let l = 0; l < layers.length - 1; l++) {
+    for (const a of layers[l]) for (const b of layers[l + 1]) {
+      edges += `<line class="edge" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+    }
+  }
+  let nodes = '';
+  let i = 0;
+  for (const layer of layers) {
+    for (const n of layer) {
+      const cls = (i % 2 === 0) ? 'node' : 'node b';
+      nodes += `<circle class="${cls}" cx="${n.x}" cy="${n.y}" r="1" style="animation-delay:${(i * 0.15)}s"/>`;
+      i++;
+    }
+  }
+  svg.innerHTML = edges + nodes;
+})();
+
+/* ════════════ Converge scene ════════════ */
+(function() {
+  const wrap = document.getElementById('scene-converge');
+  for (let i = 0; i < 36; i++) {
+    const p = document.createElement('span');
+    p.className = 'p' + (Math.random() > 0.5 ? ' b' : '');
+    const sx = (Math.random() - 0.5) * 90;
+    const sy = (Math.random() - 0.5) * 90;
+    p.style.left = '50%';
+    p.style.top = '50%';
+    p.style.setProperty('--sx', sx + 'vw');
+    p.style.setProperty('--sy', sy + 'vh');
+    p.style.animationDelay = (Math.random() * 6) + 's';
+    p.style.animationDuration = (4 + Math.random() * 4) + 's';
+    wrap.appendChild(p);
+  }
+})();
+
+/* ════════════ Book state engine ════════════ */
+const TOTAL_STATES = 8; // 0..7
+const FLIP_MS = 1000;
+let state = 0;
+let busy = false;
+
+const book = document.getElementById('book');
+const coverLeaf = document.getElementById('leaf-cover');
+const innerLeaves = [
+  document.getElementById('leaf-1'),
+  document.getElementById('leaf-2'),
+  document.getElementById('leaf-3'),
+  document.getElementById('leaf-4'),
+  document.getElementById('leaf-5'),
+];
+const scenes = document.querySelectorAll('.scene');
+const floats = document.querySelectorAll('.float');
+const worldLayers = document.querySelectorAll('.world-layer');
+const railDots = document.querySelectorAll('.rail .dot');
+const stateNum = document.getElementById('state-num');
+const hint = document.getElementById('hint');
+const closing = document.getElementById('closing');
+
+function applyState(n) {
+  // Book transform
+  book.classList.toggle('open', n >= 1 && n <= 6);
+  book.classList.toggle('closing', n === 7 || n === 0);
+
+  // Cover
+  if (n === 0 || n === 7) {
+    coverLeaf.classList.remove('flipped');
+    coverLeaf.style.zIndex = 60;
+  } else {
+    coverLeaf.classList.add('flipped');
+    coverLeaf.style.zIndex = 5;
+  }
+
+  // Inner leaves: leaf i (1..5) is flipped when state >= i+1
+  innerLeaves.forEach((leaf, idx) => {
+    const i = idx + 1; // 1..5
+    const flipped = n >= i + 1 && n <= 6;
+    // For state 7, keep last visual state (all flipped) so the closing cover overlays them
+    const flippedForClose = n === 7;
+    const isFlipped = flipped || flippedForClose;
+    leaf.classList.toggle('flipped', isFlipped);
+    // z-index: flipped leaves stack with higher i on top (most recently flipped on top of left pile)
+    // unflipped leaves stack with lower i on top (next-to-flip on top of right pile)
+    leaf.style.zIndex = isFlipped ? (10 + i) : (40 - i);
+  });
+
+  // Scenes
+  scenes.forEach(s => s.classList.toggle('active', +s.dataset.state === n));
+  // Floats
+  floats.forEach(f => f.classList.toggle('active', +f.dataset.state === n));
+  // World layers
+  worldLayers.forEach(w => w.classList.toggle('active', +w.dataset.state === n));
+  // Rail
+  railDots.forEach((d, i) => {
+    d.classList.toggle('active', i === n);
+    d.classList.toggle('passed', i < n);
+  });
+  // Readout
+  stateNum.textContent = String(n).padStart(2, '0');
+  // Hint visibility
+  if (n === 0) hint.classList.remove('dim', 'hidden');
+  else if (n === 7) hint.classList.add('hidden');
+  else hint.classList.add('dim');
+
+  // Closing overlay
+  closing.classList.toggle('active', n === 7);
+
+  // Star intensity adjustment (slightly brighter when book is open)
+  window.__starIntensity = (n >= 1 && n <= 6) ? 1.2 : 1;
+}
+
+function goTo(n) {
+  n = Math.max(0, Math.min(TOTAL_STATES - 1, n));
+  if (n === state || busy) return;
+  busy = true;
+  state = n;
+  applyState(state);
+  setTimeout(() => { busy = false; }, FLIP_MS);
+}
+window.__goto = goTo;
+
+function advance(dir) {
+  if (busy) return;
+  goTo(state + dir);
+}
+
+/* ── Input: wheel ── */
+let wheelLock = false;
+let wheelAccum = 0;
+window.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (busy) return;
+  wheelAccum += e.deltaY;
+  if (wheelLock) return;
+  if (Math.abs(wheelAccum) < 30) return;
+  const dir = wheelAccum > 0 ? 1 : -1;
+  wheelAccum = 0;
+  wheelLock = true;
+  advance(dir);
+  setTimeout(() => { wheelLock = false; }, FLIP_MS + 50);
+}, { passive: false });
+
+/* ── Input: keyboard ── */
+window.addEventListener('keydown', (e) => {
+  if (['ArrowDown', 'ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); advance(1); }
+  if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); advance(-1); }
+  if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+  if (e.key === 'End') { e.preventDefault(); goTo(7); }
+});
+
+/* ── Input: touch swipe ── */
+let touchY = 0, touchX = 0;
+window.addEventListener('touchstart', (e) => {
+  touchY = e.touches[0].clientY;
+  touchX = e.touches[0].clientX;
+}, { passive: true });
+window.addEventListener('touchend', (e) => {
+  const dy = e.changedTouches[0].clientY - touchY;
+  const dx = e.changedTouches[0].clientX - touchX;
+  if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx)) {
+    advance(dy < 0 ? 1 : -1);
+  } else if (Math.abs(dx) > 60) {
+    advance(dx < 0 ? 1 : -1);
+  }
+});
+
+/* ── Rail click ── */
+railDots.forEach(d => {
+  d.addEventListener('click', () => goTo(+d.dataset.go));
+});
+
+/* ── Boot ── */
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('boot').classList.add('gone');
+    applyState(0);
+    // Reveal initial world layer with a tiny delay so transition fires
+    setTimeout(() => {
+      document.querySelector('.world-layer[data-state="0"]').classList.add('active');
+    }, 50);
+  }, 400);
+});
+</script>
+</body>
+</html>
